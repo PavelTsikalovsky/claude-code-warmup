@@ -48,6 +48,7 @@ export default async function handler(
     // Only allow Vercel cron invocations.
     // Vercel auto-generates CRON_SECRET and sends it as: Authorization: Bearer <CRON_SECRET>
     const cronSecret = process.env.CRON_SECRET;
+    console.log(`[warmup] debug: CRON_SECRET set=${!!cronSecret}, auth header="${req.headers.authorization?.slice(0, 20)}..."`);
     if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
         console.error(`[warmup] ✗ Error at ${new Date().toISOString()}: Unauthorized request. Missing or invalid CRON_SECRET.`);
         return res.status(401).json({ error: "Unauthorized" });
