@@ -84,7 +84,7 @@ This prints a token that looks like `sk-ant-oat01-...` and is **valid for 1 year
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | ✅ | — | Long-lived OAuth token from `claude setup-token` (valid 1 year) |
-| `WARMUP_MESSAGE` | ❌ | *"Hello! This is an automated warm-up..."* | Custom message sent to Claude |
+| `WARMUP_MESSAGE` | ❌ | *"Health check ping from an automated warmup job..."* | Custom message sent to Claude |
 | `CRON_SECRET` | ✅ | — | Shared secret for `Authorization: Bearer <CRON_SECRET>` between Vercel Cron and `/api/warmup` |
 
 ---

@@ -30,7 +30,7 @@ function sanitizeDebugBody(body: string, maxLength = 300): string {
 }
 
 const DEFAULT_WARMUP_MESSAGE =
-    "Hello! This is an automated warm-up message to reset my Claude Code rate limit window. Please just say 'Warmed up!' in response.";
+    "Health check ping from an automated warmup job. Please reply with exactly: warmup-ok";
 
 /**
  * Send a single warm-up message to the Claude API using a long-lived OAuth token.
