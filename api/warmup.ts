@@ -2,6 +2,19 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
+class AnthropicApiError extends Error {
+    constructor(
+        public readonly status: number,
+        public readonly statusText: string,
+        public readonly responseBody: string
+    ) {
+        super(
+            `Anthropic API error: ${status} ${statusText} — ${responseBody}`
+        );
+        this.name = "AnthropicApiError";
+    }
+}
+
 const DEFAULT_WARMUP_MESSAGE =
     "Hello! This is an automated warm-up message to reset my Claude Code rate limit window. Please just say 'Warmed up!' in response.";
 
@@ -29,9 +42,7 @@ async function sendWarmupMessage(
 
     if (!response.ok) {
         const text = await response.text();
-        throw new Error(
-            `Anthropic API error: ${response.status} ${response.statusText} — ${text}`
-        );
+        throw new AnthropicApiError(response.status, response.statusText, text);
     }
 
     const data = (await response.json()) as {
@@ -48,7 +59,9 @@ export default async function handler(
     // Only allow authorized cron invocations.
     // Expected header: Authorization: Bearer <CRON_SECRET>
     const cronSecret = process.env.CRON_SECRET;
-    console.log(`[warmup] debug: CRON_SECRET set=${!!cronSecret}, auth header="${req.headers.authorization?.slice(0, 20)}..."`);
+    console.log(
+        `[warmup] debug: CRON_SECRET set=${!!cronSecret}, auth present=${!!req.headers.authorization}`
+    );
     if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
         console.error(`[warmup] ✗ Error at ${new Date().toISOString()}: Unauthorized request. Missing or invalid CRON_SECRET.`);
         return res.status(401).json({ error: "Unauthorized" });
@@ -76,6 +89,20 @@ export default async function handler(
             timestamp,
         });
     } catch (err) {
+        if (err instanceof AnthropicApiError) {
+            // Endpoint depends on Anthropic API, so report upstream failures explicitly.
+            const status = err.status === 429 ? 429 : 502;
+            console.error(
+                `[warmup] ✗ Error at ${timestamp}: upstream=${err.status} ${err.statusText}`
+            );
+            return res.status(status).json({
+                success: false,
+                error: "Anthropic upstream request failed",
+                upstreamStatus: err.status,
+                timestamp,
+            });
+        }
+
         const error = err instanceof Error ? err.message : String(err);
         console.error(`[warmup] ✗ Error at ${timestamp}: ${error}`);
         return res.status(500).json({ success: false, error, timestamp });
