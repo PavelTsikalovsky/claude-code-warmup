@@ -15,6 +15,20 @@ class AnthropicApiError extends Error {
     }
 }
 
+function sanitizeDebugBody(body: string, maxLength = 300): string {
+    const singleLine = body.replace(/\s+/g, " ").trim();
+    const redacted = singleLine
+        .replace(/Bearer\s+[A-Za-z0-9._\-]+/gi, "Bearer [REDACTED]")
+        .replace(/sk-ant-[A-Za-z0-9._\-]+/gi, "sk-ant-[REDACTED]")
+        .replace(/(token|secret|api[_-]?key)"?\s*[:=]\s*"?[^"\s,}]+/gi, "$1=[REDACTED]");
+
+    if (redacted.length <= maxLength) {
+        return redacted;
+    }
+
+    return `${redacted.slice(0, maxLength)}...[truncated]`;
+}
+
 const DEFAULT_WARMUP_MESSAGE =
     "Hello! This is an automated warm-up message to reset my Claude Code rate limit window. Please just say 'Warmed up!' in response.";
 
@@ -92,8 +106,9 @@ export default async function handler(
         if (err instanceof AnthropicApiError) {
             // Endpoint depends on Anthropic API, so report upstream failures explicitly.
             const status = err.status === 429 ? 429 : 502;
+            const debugBody = sanitizeDebugBody(err.responseBody);
             console.error(
-                `[warmup] ✗ Error at ${timestamp}: upstream=${err.status} ${err.statusText}`
+                `[warmup] ✗ Error at ${timestamp}: upstream=${err.status} ${err.statusText}, body=${debugBody}`
             );
             return res.status(status).json({
                 success: false,
